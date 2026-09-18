@@ -41,7 +41,11 @@ def get_audio_info(query, requester_name="Kullanıcı"):
             'skip_download': True,
             'quiet': True,
             'no_warnings': True,
-            'nocheckcertificate': True
+            'nocheckcertificate': True,
+            'extractor_args': {'youtube': {'player_client': ['android']}},
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
+            }
         }
         
         with yt_dlp.YoutubeDL(flat_opts) as ydl:
@@ -70,7 +74,11 @@ def get_audio_info(query, requester_name="Kullanıcı"):
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
-        'ffmpeg_location': current_dir
+        'ffmpeg_location': current_dir,
+        'extractor_args': {'youtube': {'player_client': ['android']}},
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
+        }
     }
     
     with yt_dlp.YoutubeDL(single_opts) as ydl:
