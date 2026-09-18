@@ -82,9 +82,9 @@ def get_audio_info(query, requester_name="Kullanıcı"):
         words = query.split()
         if len(words) <= 2:
             is_artist_search = True
-            target_url = f"ytsearch3:{query}"
+            target_url = f"ytmsearch3:{query}"
         else:
-            target_url = f"ytsearch1:{query}"
+            target_url = f"ytmsearch1:{query}"
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
