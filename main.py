@@ -212,6 +212,41 @@ def format_now_playing_text(info):
         f"{search_type_note}"
     )
 
+async def auto_join_assistant(chat_id, chat_username=None, chat_title="Grup"):
+    """
+    Ana bot gruba eklendiğinde Asistan (Userbot) hesabının otonom olarak gruba katılmasını sağlar.
+    """
+    if not user_app:
+        return False
+        
+    try:
+        # Önce Asistanın zaten grupta olup olmadığını kontrol et
+        try:
+            member = await user_app.get_chat_member(chat_id, "me")
+            if member and member.status not in [ChatMemberStatus.BANNED, ChatMemberStatus.LEFT]:
+                return True
+        except Exception:
+            pass
+
+        join_target = None
+        if chat_username:
+            join_target = chat_username
+        else:
+            try:
+                invite_link = await app.export_chat_invite_link(chat_id)
+                join_target = invite_link
+            except Exception as e:
+                print(f"Davet linki oluşturulamadı ({chat_id}): {e}")
+                join_target = chat_id
+
+        if join_target:
+            await user_app.join_chat(join_target)
+            return True
+    except Exception as e:
+        print(f"Asistan otomatik katılma hatası ({chat_id}): {e}")
+        traceback.print_exc()
+    return False
+
 # --- BOT GRUBA EKLENDİĞİNDE / ÇIKARILDIĞINDA OTOMATİK TAKİP (ChatMemberUpdated) ---
 @app.on_chat_member_updated()
 async def chat_member_update(client, chat_member_updated: ChatMemberUpdated):
@@ -219,10 +254,32 @@ async def chat_member_update(client, chat_member_updated: ChatMemberUpdated):
     new_member = chat_member_updated.new_chat_member
     
     if new_member and new_member.user.id == bot_me.id:
+        chat_id = chat_member_updated.chat.id
+        chat_title = chat_member_updated.chat.title or "Grup"
+        
         if new_member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR]:
-            add_group(chat_member_updated.chat.id, chat_member_updated.chat.title or "Grup")
+            add_group(chat_id, chat_title)
+            
+            # Asistan hesabının otonom gruba katılması
+            await auto_join_assistant(
+                chat_id,
+                chat_username=chat_member_updated.chat.username,
+                chat_title=chat_title
+            )
+            
+            # Gruba katılım duyurusu gönder
+            try:
+                await client.send_message(
+                    chat_id,
+                    "🎵 **Oscar Müzik ve Asistan Hesabı Gruba Başarıyla Katıldı!**\n\n"
+                    "Sesli sohbeti başlatıp `/oynat şarkı_adı` yazarak müzik dinlemeye başlayabilirsiniz.",
+                    **NO_PREVIEW
+                )
+            except Exception:
+                pass
+                
         elif new_member.status in [ChatMemberStatus.BANNED, ChatMemberStatus.LEFT]:
-            mark_group_removed(chat_member_updated.chat.id, chat_member_updated.chat.title or "Grup")
+            mark_group_removed(chat_id, chat_title)
 
 @app.on_message(filters.group, group=-1)
 async def track_groups(client, message):
