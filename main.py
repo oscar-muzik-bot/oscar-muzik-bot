@@ -723,5 +723,5 @@ async def start_services():
 
 if __name__ == "__main__":
     print("Oscar Muzik Botu Baslatiliyor...")
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_services())
+    init_db()  # Veritabani tablolari olusturulur ve yeni sutunlar eklenir
+    loo
