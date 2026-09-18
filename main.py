@@ -179,19 +179,27 @@ async def is_call_active(chat_id):
         pass
     return False
 
-def get_player_buttons():
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("⏸ Duraklat", callback_data="cb_pause"),
-            InlineKeyboardButton("▶️ Devam", callback_data="cb_resume"),
-            InlineKeyboardButton("⏭ Atla", callback_data="cb_skip")
-        ],
-        [
-            InlineKeyboardButton("📜 Kuyruk", callback_data="cb_queue"),
-            InlineKeyboardButton("🔀 Karıştır", callback_data="cb_shuffle"),
-            InlineKeyboardButton("⏹ Durdur", callback_data="cb_stop")
-        ]
-    ])
+async def check_admin_privilege(client, message):
+    """
+    Kullanıcının grup yöneticisi (Admin/Owner) veya bot sahibi olup olmadığını kontrol eder.
+    """
+    if not message.from_user:
+        return False
+        
+    if is_owner(message.from_user):
+        return True
+        
+    if not message.chat or message.chat.type == ChatType.PRIVATE:
+        return True
+        
+    try:
+        member = await client.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+            return True
+    except Exception:
+        pass
+        
+    return False
 
 def format_now_playing_text(info):
     search_type_note = "\n🎲 *(Sanatçı aramasından rastgele bir şarkı seçildi)*" if info.get('is_artist_search') else ""
@@ -201,8 +209,7 @@ def format_now_playing_text(info):
         f"👤 **Sanatçı / Kanal:** `{info['uploader']}`\n"
         f"⏱️ **Süre:** `{info['duration']}`\n"
         f"🎧 **İsteyen:** {info['requester']}"
-        f"{search_type_note}\n\n"
-        f"✨ *Aşağıdaki butonları kullanarak müziği kolayca yönetebilirsiniz.*"
+        f"{search_type_note}"
     )
 
 # --- BOT GRUBA EKLENDİĞİNDE / ÇIKARILDIĞINDA OTOMATİK TAKİP (ChatMemberUpdated) ---
@@ -350,7 +357,6 @@ async def play_command(client, message):
                 pass
             await msg.edit_text(
                 format_now_playing_text(audio_info),
-                reply_markup=get_player_buttons(),
                 **NO_PREVIEW
             )
             
@@ -375,8 +381,12 @@ async def play_command(client, message):
         else:
             await msg.edit_text(f"⚠️ **Şarkı açılırken bir sorun oluştu:** `{type(e).__name__}: {str(e)}`", **NO_PREVIEW)
 
-@app.on_message(filters.command("duraklat"))
+@app.on_message(filters.command(["duraklat", "pause"]))
 async def pause_command(client, message):
+    if not await check_admin_privilege(client, message):
+        await message.reply_text("⛔ **Bu komutu sadece grup yöneticileri kullanabilir!**", **NO_PREVIEW)
+        return
+
     chat_id = message.chat.id
     if not call_py:
         await message.reply_text("⚠️ Asistan hesabı aktif değil.", **NO_PREVIEW)
@@ -387,8 +397,12 @@ async def pause_command(client, message):
     except Exception as e:
         await message.reply_text("⚠️ **Şu an duraklatılacak çalan bir müzik yok.**", **NO_PREVIEW)
 
-@app.on_message(filters.command("devam"))
+@app.on_message(filters.command(["devam", "resume"]))
 async def resume_command(client, message):
+    if not await check_admin_privilege(client, message):
+        await message.reply_text("⛔ **Bu komutu sadece grup yöneticileri kullanabilir!**", **NO_PREVIEW)
+        return
+
     chat_id = message.chat.id
     if not call_py:
         await message.reply_text("⚠️ Asistan hesabı aktif değil.", **NO_PREVIEW)
@@ -399,8 +413,12 @@ async def resume_command(client, message):
     except Exception as e:
         await message.reply_text("⚠️ **Devam ettirilecek duraklatılmış müzik bulunamadı.**", **NO_PREVIEW)
 
-@app.on_message(filters.command("atla"))
+@app.on_message(filters.command(["atla", "skip", "next"]))
 async def skip_command(client, message):
+    if not await check_admin_privilege(client, message):
+        await message.reply_text("⛔ **Bu komutu sadece grup yöneticileri kullanabilir!**", **NO_PREVIEW)
+        return
+
     chat_id = message.chat.id
     if not call_py:
         await message.reply_text("⚠️ Asistan hesabı aktif değil.", **NO_PREVIEW)
@@ -411,7 +429,6 @@ async def skip_command(client, message):
         if next_song:
             await msg.edit_text(
                 format_now_playing_text(next_song),
-                reply_markup=get_player_buttons(),
                 **NO_PREVIEW
             )
         else:
@@ -419,7 +436,7 @@ async def skip_command(client, message):
     except Exception as e:
         await message.reply_text(f"⚠️ **Hata:** {str(e)}", **NO_PREVIEW)
 
-@app.on_message(filters.command("kuyruk"))
+@app.on_message(filters.command(["kuyruk", "queue", "q"]))
 async def queue_command(client, message):
     chat_id = message.chat.id
     current = current_playing.get(chat_id)
@@ -445,8 +462,12 @@ async def queue_command(client, message):
         
     await message.reply_text(text, **NO_PREVIEW)
 
-@app.on_message(filters.command("karistir"))
+@app.on_message(filters.command(["karistir", "shuffle"]))
 async def shuffle_command(client, message):
+    if not await check_admin_privilege(client, message):
+        await message.reply_text("⛔ **Bu komutu sadece grup yöneticileri kullanabilir!**", **NO_PREVIEW)
+        return
+
     chat_id = message.chat.id
     queue = music_queue.get(chat_id, [])
     if len(queue) < 2:
@@ -456,8 +477,11 @@ async def shuffle_command(client, message):
     random.shuffle(queue)
     await message.reply_text("🔀 **Kuyruktaki şarkılar başarıyla karıştırıldı!**", **NO_PREVIEW)
 
-@app.on_message(filters.command("durdur"))
+@app.on_message(filters.command(["durdur", "stop", "ciz"]))
 async def stop_command(client, message):
+    if not await check_admin_privilege(client, message):
+        await message.reply_text("⛔ **Bu komutu sadece grup yöneticileri kullanabilir!**", **NO_PREVIEW)
+        return
     chat_id = message.chat.id
     if chat_id in music_queue:
         music_queue[chat_id].clear()
