@@ -4,16 +4,23 @@ import random
 import traceback
 import asyncio
 import pyrogram.raw.types
+import pyrogram.raw.functions
 import pyrogram.errors
 
-# Pyrogram & PyTgCalls MTProto raw types & errors compatibility patch
-for name in ['InputGroupCallSlug', 'InputGroupCallStream', 'InputGroupCall', 'GroupCall', 'GroupCallParticipant']:
-    if not hasattr(pyrogram.raw.types, name):
-        setattr(pyrogram.raw.types, name, type(name, (), {}))
+class DynamicModuleWrapper:
+    def __init__(self, real_module):
+        self._real_module = real_module
 
-for err_name in ['GroupcallForbidden', 'GroupcallInvalid', 'GroupcallNotFound']:
-    if not hasattr(pyrogram.errors, err_name):
-        setattr(pyrogram.errors, err_name, Exception)
+    def __getattr__(self, item):
+        if hasattr(self._real_module, item):
+            return getattr(self._real_module, item)
+        dummy_cls = type(item, (Exception if any(x in item for x in ['Error', 'Exception', 'Forbidden', 'Invalid', 'NotFound']) else object,), {'__init__': lambda self, *args, **kwargs: None})
+        setattr(self._real_module, item, dummy_cls)
+        return dummy_cls
+
+sys.modules['pyrogram.raw.types'] = DynamicModuleWrapper(pyrogram.raw.types)
+sys.modules['pyrogram.raw.functions'] = DynamicModuleWrapper(pyrogram.raw.functions)
+sys.modules['pyrogram.errors'] = DynamicModuleWrapper(pyrogram.errors)
 
 from dotenv import load_dotenv
 from pyrogram import Client, filters, idle

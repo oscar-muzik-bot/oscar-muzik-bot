@@ -3,23 +3,23 @@ import sys
 import random
 import traceback
 import pyrogram.raw.types
+import pyrogram.raw.functions
 import pyrogram.errors
 
-# Pyrogram / PyTgCalls uyumluluk yaması (ImportError önleme)
-for name in ['InputGroupCallSlug', 'InputGroupCallStream']:
-    if not hasattr(pyrogram.raw.types, name):
-        setattr(pyrogram.raw.types, name, type(name, (), {}))
+class DynamicModuleWrapper:
+    def __init__(self, real_module):
+        self._real_module = real_module
 
-for err_name, fallback_name in [
-    ('GroupcallForbidden', 'BroadcastForbidden'),
-    ('GroupcallInvalid', 'GroupCallInvalid'),
-    ('GroupcallNotFound', 'GroupCallNotFound')
-]:
-    if not hasattr(pyrogram.errors, err_name):
-        try:
-            setattr(pyrogram.errors, err_name, getattr(pyrogram.errors, fallback_name, Exception))
-        except Exception:
-            setattr(pyrogram.errors, err_name, Exception)
+    def __getattr__(self, item):
+        if hasattr(self._real_module, item):
+            return getattr(self._real_module, item)
+        dummy_cls = type(item, (Exception if any(x in item for x in ['Error', 'Exception', 'Forbidden', 'Invalid', 'NotFound']) else object,), {'__init__': lambda self, *args, **kwargs: None})
+        setattr(self._real_module, item, dummy_cls)
+        return dummy_cls
+
+sys.modules['pyrogram.raw.types'] = DynamicModuleWrapper(pyrogram.raw.types)
+sys.modules['pyrogram.raw.functions'] = DynamicModuleWrapper(pyrogram.raw.functions)
+sys.modules['pyrogram.errors'] = DynamicModuleWrapper(pyrogram.errors)
 
 import yt_dlp
 from pytgcalls import PyTgCalls
