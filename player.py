@@ -25,7 +25,7 @@ def get_audio_info(query, requester_name="Kullanıcı"):
     is_artist_search = False
 
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': '140/bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
