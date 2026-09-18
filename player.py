@@ -61,7 +61,7 @@ def get_audio_info(query, requester_name="Kullanıcı"):
         'no_warnings': True,
         'nocheckcertificate': True,
         'ffmpeg_location': current_dir,
-        'extractor_args': {'youtube': {'player_client': ['android', 'web', 'ios', 'mweb', 'tv']}},
+        'extractor_args': {'youtube': {'player_client': ['web', 'ios', 'tv']}},
     }
 
     # Çerez dosyası kontrolü
