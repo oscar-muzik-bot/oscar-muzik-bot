@@ -3,6 +3,18 @@ import sys
 import random
 import traceback
 import asyncio
+import pyrogram.raw.types
+import pyrogram.errors
+
+# Pyrogram & PyTgCalls MTProto raw types & errors compatibility patch
+for name in ['InputGroupCallSlug', 'InputGroupCallStream', 'InputGroupCall', 'GroupCall', 'GroupCallParticipant']:
+    if not hasattr(pyrogram.raw.types, name):
+        setattr(pyrogram.raw.types, name, type(name, (), {}))
+
+for err_name in ['GroupcallForbidden', 'GroupcallInvalid', 'GroupcallNotFound']:
+    if not hasattr(pyrogram.errors, err_name):
+        setattr(pyrogram.errors, err_name, Exception)
+
 from dotenv import load_dotenv
 from pyrogram import Client, filters, idle
 from pyrogram.enums import ChatType, ChatMemberStatus
