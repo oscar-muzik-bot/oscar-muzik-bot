@@ -4,7 +4,7 @@ import random
 import traceback
 import asyncio
 import pyrogram.raw.types
-import pyrogram.raw.functions
+import pyrogram.raw.functions.phone
 import pyrogram.errors
 
 class DynamicModuleWrapper:
@@ -19,8 +19,17 @@ class DynamicModuleWrapper:
         return dummy_cls
 
 sys.modules['pyrogram.raw.types'] = DynamicModuleWrapper(pyrogram.raw.types)
-sys.modules['pyrogram.raw.functions'] = DynamicModuleWrapper(pyrogram.raw.functions)
 sys.modules['pyrogram.errors'] = DynamicModuleWrapper(pyrogram.errors)
+
+try:
+    if hasattr(pyrogram.raw.functions.phone, 'JoinGroupCall'):
+        _orig_join_init = pyrogram.raw.functions.phone.JoinGroupCall.__init__
+        def _patch_join_init(self, *args, **kwargs):
+            kwargs.pop('public_key', None)
+            return _orig_join_init(self, *args, **kwargs)
+        pyrogram.raw.functions.phone.JoinGroupCall.__init__ = _patch_join_init
+except Exception:
+    pass
 
 from dotenv import load_dotenv
 from pyrogram import Client, filters, idle
