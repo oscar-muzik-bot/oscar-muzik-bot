@@ -293,7 +293,7 @@ async def chat_member_update(client, chat_member_updated: ChatMemberUpdated):
                         chat_id,
                         "🎵 **Oscar Müzik Gruba Katıldı!**\n\n"
                         "Sesli sohbeti başlatıp `/oynat şarkı_adı` yazarak müzik dinlemeye başlayabilirsiniz.\n\n"
-                        "⚠️ *Asistan hesabı otomatik katılamadı, lütfen @nevarlaa1 hesabını gruba davet edin.*",
+                        "⚠️ *Asistan hesabı otomatik katılamadı, lütfen @oscarmuzikrobot hesabını gruba davet edin.*",
                         **NO_PREVIEW
                     )
             except Exception:
