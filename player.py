@@ -42,10 +42,6 @@ def get_audio_info(query, requester_name="Kullanıcı"):
             'quiet': True,
             'no_warnings': True,
             'nocheckcertificate': True,
-            'extractor_args': {'youtube': {'player_client': ['ios', 'tv_embedded']}},
-            'http_headers': {
-                'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
-            }
         }
         
         with yt_dlp.YoutubeDL(flat_opts) as ydl:
