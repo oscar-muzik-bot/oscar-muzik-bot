@@ -10,9 +10,9 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     CallbackQuery,
-    LinkPreviewOptions,
     ChatMemberUpdated
 )
+
 from db import (
     init_db,
     add_group,
@@ -55,7 +55,11 @@ OWNER_LINK = os.getenv("OWNER_LINK", "https://t.me/oscarmuzikrobot")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8937572880"))
 ADMINS = [x.strip().lower().replace("@", "") for x in os.getenv("ADMINS", "").split(",") if x.strip()]
 
-NO_PREVIEW = LinkPreviewOptions(is_disabled=True)
+try:
+    from pyrogram.types import LinkPreviewOptions
+    NO_PREVIEW = {"link_preview_options": LinkPreviewOptions(is_disabled=True)}
+except ImportError:
+    NO_PREVIEW = {"disable_web_page_preview": True}
 
 # 1. Ana Bot İstemcisi (Mesajlar, Komutlar ve Arayüz)
 app = Client(
@@ -128,7 +132,7 @@ async def notify_admin_new_user(user):
                 f"🌐 **Dil Seçeneği:** `{lang}`\n\n"
                 f"💾 *Kullanıcı bilgileri bot.db veritabanına kaydedildi.*"
             )
-            await app.send_message(target_id, text, link_preview_options=NO_PREVIEW)
+            await app.send_message(target_id, text, **NO_PREVIEW)
     except Exception as e:
         print(f"Admin notify error: {e}")
 
@@ -226,7 +230,7 @@ async def start_command(client, message):
         [InlineKeyboardButton("📚 YARDIM & KOMUTLAR", callback_data="help_commands")]
     ])
     
-    await message.reply_text(text, reply_markup=keyboard, link_preview_options=NO_PREVIEW)
+    await message.reply_text(text, reply_markup=keyboard, **NO_PREVIEW)
 
 @app.on_message(filters.command(["yardim", "help"]))
 async def help_command(client, message):
@@ -244,7 +248,7 @@ async def help_command(client, message):
         "📢 `/duyuru [mesaj]` - Tüm aktif gruplara duyuru gönderir\n"
         "📊 `/stats` - Ekli/ayrılan grupları ve bot.db istatistiklerini gösterir"
     )
-    await message.reply_text(help_text, link_preview_options=NO_PREVIEW)
+    await message.reply_text(help_text, **NO_PREVIEW)
 
 @app.on_callback_query(filters.regex("help_commands"))
 async def help_callback(client, callback_query: CallbackQuery):
@@ -261,17 +265,17 @@ async def play_command(client, message):
             "⚠️ **Asistan (Userbot) Hesabı Bağlanmadı!**\n\n"
             "Telegram kuralları gereği sesli sohbete asistan kullanıcı hesabının katılması gerekmektedir.\n\n"
             "👉 Lütfen terminalde **`py -3.12 generate_session.py`** komutunu çalıştırarak asistan hesabınızla giriş yapın.",
-            link_preview_options=NO_PREVIEW
+            **NO_PREVIEW
         )
         return
 
     if len(message.command) < 2 and not message.reply_to_message:
-        await message.reply_text("⚠️ Lütfen bir şarkı adı, sanatçı veya link girin!\nÖrnek: `/oynat Müslüm Gürses` veya `/oynat Aldırma Gönül`", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⚠️ Lütfen bir şarkı adı, sanatçı veya link girin!\nÖrnek: `/oynat Müslüm Gürses` veya `/oynat Aldırma Gönül`", **NO_PREVIEW)
         return
         
     query = message.text.split(None, 1)[1] if len(message.command) >= 2 else message.reply_to_message.text
     requester = message.from_user.first_name if message.from_user else "Kullanıcı"
-    msg = await message.reply_text("🔎 **Aranıyor ve hazırlanıyor...**", link_preview_options=NO_PREVIEW)
+    msg = await message.reply_text("🔎 **Aranıyor ve hazırlanıyor...**", **NO_PREVIEW)
     
     try:
         loop = asyncio.get_event_loop()
@@ -297,7 +301,7 @@ async def play_command(client, message):
                 f"🎵 **Şarkı:** [{audio_info['title']}]({audio_info.get('webpage_url', '')})\n"
                 f"👤 **Sanatçı:** `{audio_info['uploader']}`\n"
                 f"🔢 **Sıra:** #{len(music_queue[chat_id])}",
-                link_preview_options=NO_PREVIEW
+                **NO_PREVIEW
             )
         else:
             music_queue[chat_id].clear()
@@ -319,7 +323,7 @@ async def play_command(client, message):
             await msg.edit_text(
                 format_now_playing_text(audio_info),
                 reply_markup=get_player_buttons(),
-                link_preview_options=NO_PREVIEW
+                **NO_PREVIEW
             )
             
     except Exception as e:
@@ -332,60 +336,60 @@ async def play_command(client, message):
             await msg.edit_text(
                 "⚠️ **Grupta aktif sesli sohbet bulunamadı!**\n"
                 "Lütfen önce grupta sesli sohbeti başlatıp komutu tekrar deneyin.",
-                link_preview_options=NO_PREVIEW
+                **NO_PREVIEW
             )
         elif "user_not_participant" in err_str or "forbidden" in err_str:
             await msg.edit_text(
                 "⚠️ **Asistan Hesap Grupta Yok!**\n\n"
                 "Lütfen asistan hesabı (Userbot) gruba ekleyin veya davet edin.",
-                link_preview_options=NO_PREVIEW
+                **NO_PREVIEW
             )
         else:
-            await msg.edit_text(f"⚠️ **Şarkı açılırken bir sorun oluştu:** `{type(e).__name__}: {str(e)}`", link_preview_options=NO_PREVIEW)
+            await msg.edit_text(f"⚠️ **Şarkı açılırken bir sorun oluştu:** `{type(e).__name__}: {str(e)}`", **NO_PREVIEW)
 
 @app.on_message(filters.command("duraklat"))
 async def pause_command(client, message):
     chat_id = message.chat.id
     if not call_py:
-        await message.reply_text("⚠️ Asistan hesabı aktif değil.", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⚠️ Asistan hesabı aktif değil.", **NO_PREVIEW)
         return
     try:
         await call_py.pause(chat_id)
-        await message.reply_text("⏸ **Müzik duraklatıldı.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⏸ **Müzik duraklatıldı.**", **NO_PREVIEW)
     except Exception as e:
-        await message.reply_text("⚠️ **Şu an duraklatılacak çalan bir müzik yok.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⚠️ **Şu an duraklatılacak çalan bir müzik yok.**", **NO_PREVIEW)
 
 @app.on_message(filters.command("devam"))
 async def resume_command(client, message):
     chat_id = message.chat.id
     if not call_py:
-        await message.reply_text("⚠️ Asistan hesabı aktif değil.", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⚠️ Asistan hesabı aktif değil.", **NO_PREVIEW)
         return
     try:
         await call_py.resume(chat_id)
-        await message.reply_text("▶️ **Müzik devam ettiriliyor.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("▶️ **Müzik devam ettiriliyor.**", **NO_PREVIEW)
     except Exception as e:
-        await message.reply_text("⚠️ **Devam ettirilecek duraklatılmış müzik bulunamadı.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⚠️ **Devam ettirilecek duraklatılmış müzik bulunamadı.**", **NO_PREVIEW)
 
 @app.on_message(filters.command("atla"))
 async def skip_command(client, message):
     chat_id = message.chat.id
     if not call_py:
-        await message.reply_text("⚠️ Asistan hesabı aktif değil.", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⚠️ Asistan hesabı aktif değil.", **NO_PREVIEW)
         return
     try:
-        msg = await message.reply_text("⏭ **Şarkı atlanıyor...**", link_preview_options=NO_PREVIEW)
+        msg = await message.reply_text("⏭ **Şarkı atlanıyor...**", **NO_PREVIEW)
         next_song = await play_next(call_py, chat_id, message.from_user)
         if next_song:
             await msg.edit_text(
                 format_now_playing_text(next_song),
                 reply_markup=get_player_buttons(),
-                link_preview_options=NO_PREVIEW
+                **NO_PREVIEW
             )
         else:
-            await msg.edit_text("⏹ **Kuyruk bitti, sesli sohbetten ayrılındı.**", link_preview_options=NO_PREVIEW)
+            await msg.edit_text("⏹ **Kuyruk bitti, sesli sohbetten ayrılındı.**", **NO_PREVIEW)
     except Exception as e:
-        await message.reply_text(f"⚠️ **Hata:** {str(e)}", link_preview_options=NO_PREVIEW)
+        await message.reply_text(f"⚠️ **Hata:** {str(e)}", **NO_PREVIEW)
 
 @app.on_message(filters.command("kuyruk"))
 async def queue_command(client, message):
@@ -394,7 +398,7 @@ async def queue_command(client, message):
     queue = music_queue.get(chat_id, [])
     
     if not current and not queue:
-        await message.reply_text("📜 **Şu an çalan müzik veya kuyrukta şarkı bulunmuyor.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("📜 **Şu an çalan müzik veya kuyrukta şarkı bulunmuyor.**", **NO_PREVIEW)
         return
         
     text = "——[ **MÜZİK KUYRUĞU 📜** ]——\n\n"
@@ -411,18 +415,18 @@ async def queue_command(client, message):
     else:
         text += "ℹ️ *Kuyrukta başka şarkı yok.*"
         
-    await message.reply_text(text, link_preview_options=NO_PREVIEW)
+    await message.reply_text(text, **NO_PREVIEW)
 
 @app.on_message(filters.command("karistir"))
 async def shuffle_command(client, message):
     chat_id = message.chat.id
     queue = music_queue.get(chat_id, [])
     if len(queue) < 2:
-        await message.reply_text("⚠️ Karıştırmak için kuyrukta en az 2 şarkı olmalıdır.", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⚠️ Karıştırmak için kuyrukta en az 2 şarkı olmalıdır.", **NO_PREVIEW)
         return
         
     random.shuffle(queue)
-    await message.reply_text("🔀 **Kuyruktaki şarkılar başarıyla karıştırıldı!**", link_preview_options=NO_PREVIEW)
+    await message.reply_text("🔀 **Kuyruktaki şarkılar başarıyla karıştırıldı!**", **NO_PREVIEW)
 
 @app.on_message(filters.command("durdur"))
 async def stop_command(client, message):
@@ -432,13 +436,13 @@ async def stop_command(client, message):
     current_playing.pop(chat_id, None)
     
     if not call_py:
-        await message.reply_text("⏹ **Müzik durduruldu.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⏹ **Müzik durduruldu.**", **NO_PREVIEW)
         return
     try:
         await call_py.leave_call(chat_id)
-        await message.reply_text("⏹ **Müzik durduruldu, kuyruk temizlendi ve sesten ayrılındı.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⏹ **Müzik durduruldu, kuyruk temizlendi ve sesten ayrılındı.**", **NO_PREVIEW)
     except Exception as e:
-        await message.reply_text("⏹ **Sesten ayrılındı.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⏹ **Sesten ayrılındı.**", **NO_PREVIEW)
 
 # --- YÖNETİCİ ÖZEL KOMUTLARI (bot.db Entegreli) ---
 
@@ -452,7 +456,7 @@ async def broadcast_command(client, message):
             f"👤 **Sizin Bilgileriniz:**\n"
             f"🆔 **Telegram ID:** `{user_id}`\n"
             f"🏷️ **Kullanıcı Adı:** {username}",
-            link_preview_options=NO_PREVIEW
+            **NO_PREVIEW
         )
         return
         
@@ -461,16 +465,16 @@ async def broadcast_command(client, message):
             "⚠️ **Kullanım:**\n"
             "1. `/duyuru Gönderilecek duyuru metni`\n"
             "2. Bir mesaja yanıt vererek `/duyuru` yazın (Resim, video veya metin için)",
-            link_preview_options=NO_PREVIEW
+            **NO_PREVIEW
         )
         return
 
     active_groups = get_active_groups()
     if not active_groups:
-        await message.reply_text("⚠️ **Veritabanında (bot.db) kayıtlı aktif grup bulunamadı!**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⚠️ **Veritabanında (bot.db) kayıtlı aktif grup bulunamadı!**", **NO_PREVIEW)
         return
 
-    status_msg = await message.reply_text(f"📢 **Duyuru gönderimi başlatılıyor...**\n📊 **Toplam Aktif Grup (bot.db):** `{len(active_groups)}`", link_preview_options=NO_PREVIEW)
+    status_msg = await message.reply_text(f"📢 **Duyuru gönderimi başlatılıyor...**\n📊 **Toplam Aktif Grup (bot.db):** `{len(active_groups)}`", **NO_PREVIEW)
     
     successful = 0
     failed = 0
@@ -483,7 +487,7 @@ async def broadcast_command(client, message):
                     await message.reply_to_message.copy(chat_id)
                 else:
                     broadcast_text = message.text.split(None, 1)[1]
-                    await client.send_message(chat_id, f"📢 **DUYURU**\n\n{broadcast_text}", link_preview_options=NO_PREVIEW)
+                    await client.send_message(chat_id, f"📢 **DUYURU**\n\n{broadcast_text}", **NO_PREVIEW)
             except Exception as inner_e:
                 err_inner = str(inner_e)
                 if "PEER_ID_INVALID" in err_inner or "CHANNEL_INVALID" in err_inner:
@@ -492,7 +496,7 @@ async def broadcast_command(client, message):
                         await message.reply_to_message.copy(chat_id)
                     else:
                         broadcast_text = message.text.split(None, 1)[1]
-                        await client.send_message(chat_id, f"📢 **DUYURU**\n\n{broadcast_text}", link_preview_options=NO_PREVIEW)
+                        await client.send_message(chat_id, f"📢 **DUYURU**\n\n{broadcast_text}", **NO_PREVIEW)
                 else:
                     raise inner_e
 
@@ -512,7 +516,7 @@ async def broadcast_command(client, message):
                         await message.reply_to_message.copy(chat_id)
                     else:
                         broadcast_text = message.text.split(None, 1)[1]
-                        await client.send_message(chat_id, f"📢 **DUYURU**\n\n{broadcast_text}", link_preview_options=NO_PREVIEW)
+                        await client.send_message(chat_id, f"📢 **DUYURU**\n\n{broadcast_text}", **NO_PREVIEW)
                     successful += 1
                     continue
                 except Exception:
@@ -528,7 +532,7 @@ async def broadcast_command(client, message):
         f"✅ **Başarılı Ulaşan:** `{successful}`\n"
         f"❌ **Başarısız / Banlayan:** `{failed}`"
     )
-    await status_msg.edit_text(report, link_preview_options=NO_PREVIEW)
+    await status_msg.edit_text(report, **NO_PREVIEW)
 
 @app.on_message(filters.command(["stats", "istatistik"]))
 async def stats_command(client, message):
@@ -539,7 +543,7 @@ async def stats_command(client, message):
             f"⛔ **Bu komut sadece bot sahibine özeldir!**\n\n"
             f"🆔 **Telegram ID:** `{user_id}`\n"
             f"🏷️ **Kullanıcı Adı:** {username}",
-            link_preview_options=NO_PREVIEW
+            **NO_PREVIEW
         )
         return
 
@@ -562,7 +566,7 @@ async def stats_command(client, message):
             stats_text += f"`{i}.` **{title}** — `{plays}` çalma\n"
 
     stats_text += f"\n💡 Detaylı liste için: /gruplar | Banlayan gruplar: /engeller"
-    await message.reply_text(stats_text, link_preview_options=NO_PREVIEW)
+    await message.reply_text(stats_text, **NO_PREVIEW)
 
 
 def make_group_link(chat_id, title):
@@ -577,12 +581,12 @@ def make_group_link(chat_id, title):
 @app.on_message(filters.command(["gruplar", "groups"]))
 async def groups_command(client, message):
     if not is_owner(message.from_user):
-        await message.reply_text("⛔ **Bu komut sadece bot sahibine özeldir!**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⛔ **Bu komut sadece bot sahibine özeldir!**", **NO_PREVIEW)
         return
 
     active_groups = get_active_groups_detailed()
     if not active_groups:
-        await message.reply_text("📭 **Henüz hiçbir aktif gruba eklenmemişim.**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("📭 **Henüz hiçbir aktif gruba eklenmemişim.**", **NO_PREVIEW)
         return
 
     text = f"——[ **👥 EKLİ GRUPLAR ({len(active_groups)} grup)** ]——\n\n"
@@ -601,18 +605,18 @@ async def groups_command(client, message):
     if len(active_groups) > 30:
         text += f"\n*...ve {len(active_groups) - 30} grup daha var.*"
 
-    await message.reply_text(text, link_preview_options=NO_PREVIEW)
+    await message.reply_text(text, **NO_PREVIEW)
 
 
 @app.on_message(filters.command(["engeller", "banned"]))
 async def banned_command(client, message):
     if not is_owner(message.from_user):
-        await message.reply_text("⛔ **Bu komut sadece bot sahibine özeldir!**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("⛔ **Bu komut sadece bot sahibine özeldir!**", **NO_PREVIEW)
         return
 
     removed_groups = get_removed_groups()
     if not removed_groups:
-        await message.reply_text("✅ **Henüz beni banlayan veya çıkaran bir grup yok!**", link_preview_options=NO_PREVIEW)
+        await message.reply_text("✅ **Henüz beni banlayan veya çıkaran bir grup yok!**", **NO_PREVIEW)
         return
 
     text = f"——[ **🚫 BANLAYAN / ÇIKARAN GRUPLAR ({len(removed_groups)} grup)** ]——\n\n"
@@ -631,7 +635,7 @@ async def banned_command(client, message):
     if len(removed_groups) > 30:
         text += f"\n*...ve {len(removed_groups) - 30} grup daha var.*"
 
-    await message.reply_text(text, link_preview_options=NO_PREVIEW)
+    await message.reply_text(text, **NO_PREVIEW)
 
 
 
@@ -665,10 +669,10 @@ async def handle_callbacks(client, callback_query: CallbackQuery):
             await callback_query.message.edit_text(
                 format_now_playing_text(next_song),
                 reply_markup=get_player_buttons(),
-                link_preview_options=NO_PREVIEW
+                **NO_PREVIEW
             )
         else:
-            await callback_query.message.edit_text("⏹ **Kuyruk bitti, sesli sohbetten ayrılındı.**", link_preview_options=NO_PREVIEW)
+            await callback_query.message.edit_text("⏹ **Kuyruk bitti, sesli sohbetten ayrılındı.**", **NO_PREVIEW)
             
     elif data == "cb_stop":
         if chat_id in music_queue:
@@ -679,7 +683,7 @@ async def handle_callbacks(client, callback_query: CallbackQuery):
         except Exception:
             pass
         await callback_query.answer("⏹ Müzik durduruldu", show_alert=False)
-        await callback_query.message.edit_text("⏹ **Müzik durduruldu ve sesten ayrılındı.**", link_preview_options=NO_PREVIEW)
+        await callback_query.message.edit_text("⏹ **Müzik durduruldu ve sesten ayrılındı.**", **NO_PREVIEW)
         
     elif data == "cb_queue":
         current = current_playing.get(chat_id)
