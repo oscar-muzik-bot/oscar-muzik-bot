@@ -1,7 +1,7 @@
-pyrogram==2.0.106
+pyrogram
 TgCrypto
-py-tgcalls==0.9.4
-yt-dlp>=2024.08.06
+py-tgcalls
+yt-dlp
 python-dotenv
 pycryptodome
 yt-dlp-youtube-oauth2
