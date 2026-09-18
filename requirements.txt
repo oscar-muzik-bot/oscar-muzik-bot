@@ -1,6 +1,6 @@
 pyrogram
 tgcrypto
-pytgcalls==2.3.3
+pytgcalls
 yt-dlp
 python-dotenv
 pycryptodome
