@@ -42,9 +42,9 @@ def get_audio_info(query, requester_name="Kullanıcı"):
             'quiet': True,
             'no_warnings': True,
             'nocheckcertificate': True,
-            'extractor_args': {'youtube': {'player_client': ['android']}},
+            'extractor_args': {'youtube': {'player_client': ['ios', 'tv_embedded']}},
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
+                'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
             }
         }
         
@@ -75,9 +75,9 @@ def get_audio_info(query, requester_name="Kullanıcı"):
         'no_warnings': True,
         'nocheckcertificate': True,
         'ffmpeg_location': current_dir,
-        'extractor_args': {'youtube': {'player_client': ['android']}},
+        'extractor_args': {'youtube': {'player_client': ['ios', 'tv_embedded']}},
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
+            'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
         }
     }
     
