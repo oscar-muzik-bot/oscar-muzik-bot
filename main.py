@@ -20,7 +20,9 @@ from db import (
     save_user,
     get_db_stats,
     get_active_groups,
-    get_removed_groups
+    get_active_groups_detailed,
+    get_removed_groups,
+    get_top_groups
 )
 from player import (
     init_player,
@@ -310,6 +312,11 @@ async def play_command(client, message):
                     video_flags=MediaStream.Flags.IGNORE
                 )
             )
+            try:
+                from db import increment_play_count
+                increment_play_count(chat_id)
+            except Exception:
+                pass
             await msg.edit_text(
                 format_now_playing_text(audio_info),
                 reply_markup=get_player_buttons(),
@@ -530,8 +537,7 @@ async def stats_command(client, message):
         user_id = message.from_user.id
         username = f"@{message.from_user.username}" if message.from_user and message.from_user.username else "Yok"
         await message.reply_text(
-            f"⛔ **Bu komut sadece bot sahibine (`ADMIN_ID`) özeldir!**\n\n"
-            f"👤 **Sizin Bilgileriniz:**\n"
+            f"⛔ **Bu komut sadece bot sahibine özeldir!**\n\n"
             f"🆔 **Telegram ID:** `{user_id}`\n"
             f"🏷️ **Kullanıcı Adı:** {username}",
             link_preview_options=NO_PREVIEW
@@ -539,31 +545,96 @@ async def stats_command(client, message):
         return
 
     db_stats = get_db_stats()
-    active_groups = get_active_groups()
-    removed_groups = get_removed_groups()
+    top_groups = get_top_groups(5)
     active_calls = len(current_playing)
-    
+
     stats_text = (
-        f"——[ **BOT İSTATİSTİKLERİ (bot.db) 📊** ]——\n\n"
-        f"👥 **Aktif Ekli Gruplar:** `{db_stats['active_groups']}`\n"
-        f"🔴 **Çıkarılan / Banlayan Gruplar:** `{db_stats['removed_groups']}`\n"
-        f"👤 **Kayıtlı Kullanıcı Sayısı:** `{db_stats['total_users']}`\n"
-        f"🎵 **Aktif Çalan Sesli Sohbet:** `{active_calls}`\n\n"
+        f"——[ **📊 BOT İSTATİSTİKLERİ** ]——\n\n"
+        f"👥 **Ekli Aktif Gruplar:** `{db_stats['active_groups']}`\n"
+        f"🚫 **Banlayan / Çıkaran Gruplar:** `{db_stats['removed_groups']}`\n"
+        f"👤 **Kayıtlı Kullanıcılar:** `{db_stats['total_users']}`\n"
+        f"🎵 **Toplam Çalınan Müzik:** `{db_stats.get('total_plays', 0)}`\n"
+        f"🔊 **Şu An Aktif Sesli Sohbet:** `{active_calls}`\n"
     )
-    
-    if active_groups:
-        stats_text += f"🟢 **Son Ekli Gruplar:**\n"
-        for cid, title in active_groups[:10]:
-            stats_text += f"• `{title}` (`{cid}`)\n"
-            
-    if removed_groups:
-        stats_text += f"\n🔴 **Son Çıkarılan / Banlayan Gruplar:**\n"
-        for cid, title in removed_groups[:10]:
-            stats_text += f"• `{title}` (`{cid}`)\n"
-            
+
+    if top_groups:
+        stats_text += f"\n🏆 **En Çok Müzik Çalınan Gruplar:**\n"
+        for i, (cid, title, plays) in enumerate(top_groups, 1):
+            stats_text += f"`{i}.` **{title}** — `{plays}` çalma\n"
+
+    stats_text += f"\n💡 Detaylı liste için: /gruplar | Banlayan gruplar: /engeller"
     await message.reply_text(stats_text, link_preview_options=NO_PREVIEW)
 
-# --- INLINE BUTTON CALLBACK HANDLERS ---
+
+def make_group_link(chat_id, title):
+    """Supergroup veya kanal için t.me linki oluşturur"""
+    cid_str = str(chat_id)
+    if cid_str.startswith("-100"):
+        peer_id = cid_str[4:]  # -100 prefix'ini kaldır
+        return f"https://t.me/c/{peer_id}/1"
+    return None
+
+
+@app.on_message(filters.command(["gruplar", "groups"]))
+async def groups_command(client, message):
+    if not is_owner(message.from_user):
+        await message.reply_text("⛔ **Bu komut sadece bot sahibine özeldir!**", link_preview_options=NO_PREVIEW)
+        return
+
+    active_groups = get_active_groups_detailed()
+    if not active_groups:
+        await message.reply_text("📭 **Henüz hiçbir aktif gruba eklenmemişim.**", link_preview_options=NO_PREVIEW)
+        return
+
+    text = f"——[ **👥 EKLİ GRUPLAR ({len(active_groups)} grup)** ]——\n\n"
+    for i, (cid, title, play_count, added_at) in enumerate(active_groups[:30], 1):
+        date_str = str(added_at)[:10] if added_at else "?"
+        link = make_group_link(cid, title)
+        if link:
+            group_label = f"[{title}]({link})"
+        else:
+            group_label = f"**{title}**"
+        text += (
+            f"`{i}.` {group_label}\n"
+            f"    🆔 `{cid}` | 🎵 `{play_count}` çalma | 📅 `{date_str}`\n"
+        )
+
+    if len(active_groups) > 30:
+        text += f"\n*...ve {len(active_groups) - 30} grup daha var.*"
+
+    await message.reply_text(text, link_preview_options=NO_PREVIEW)
+
+
+@app.on_message(filters.command(["engeller", "banned"]))
+async def banned_command(client, message):
+    if not is_owner(message.from_user):
+        await message.reply_text("⛔ **Bu komut sadece bot sahibine özeldir!**", link_preview_options=NO_PREVIEW)
+        return
+
+    removed_groups = get_removed_groups()
+    if not removed_groups:
+        await message.reply_text("✅ **Henüz beni banlayan veya çıkaran bir grup yok!**", link_preview_options=NO_PREVIEW)
+        return
+
+    text = f"——[ **🚫 BANLAYAN / ÇIKARAN GRUPLAR ({len(removed_groups)} grup)** ]——\n\n"
+    for i, row in enumerate(removed_groups[:30], 1):
+        cid = row[0]
+        title = row[1]
+        updated_at = row[2] if len(row) > 2 else None
+        date_str = str(updated_at)[:10] if updated_at else "?"
+        link = make_group_link(cid, title)
+        if link:
+            group_label = f"[{title}]({link})"
+        else:
+            group_label = f"**{title}**"
+        text += f"`{i}.` {group_label}\n    🆔 `{cid}` | 📅 `{date_str}`\n"
+
+    if len(removed_groups) > 30:
+        text += f"\n*...ve {len(removed_groups) - 30} grup daha var.*"
+
+    await message.reply_text(text, link_preview_options=NO_PREVIEW)
+
+
 
 @app.on_callback_query(filters.regex("^cb_"))
 async def handle_callbacks(client, callback_query: CallbackQuery):
