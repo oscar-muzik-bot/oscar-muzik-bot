@@ -1,0 +1,6 @@
+# Railway Nixpacks konfigürasyonu - FFmpeg ve Python bağımlılıkları
+[phases.setup]
+nixPkgs = ["ffmpeg"]
+
+[start]
+cmd = "python main.py"
