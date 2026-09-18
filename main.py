@@ -49,9 +49,9 @@ API_HASH = os.getenv("API_HASH")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 STRING_SESSION = os.getenv("STRING_SESSION", "").strip()
 
-SUPPORT_GROUP = os.getenv("SUPPORT_GROUP", "https://t.me/telegram")
-UPDATE_CHANNEL = os.getenv("UPDATE_CHANNEL", "https://t.me/telegram")
-OWNER_LINK = os.getenv("OWNER_LINK", "https://t.me/telegram")
+SUPPORT_GROUP = os.getenv("SUPPORT_GROUP", "")
+UPDATE_CHANNEL = os.getenv("UPDATE_CHANNEL", "https://t.me/oscarmuzikrobot")
+OWNER_LINK = os.getenv("OWNER_LINK", "https://t.me/oscarmuzikrobot")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8937572880"))
 ADMINS = [x.strip().lower().replace("@", "") for x in os.getenv("ADMINS", "").split(",") if x.strip()]
 
@@ -220,7 +220,6 @@ async def start_command(client, message):
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("Beni Grubuna Ekle ↗️", url=f"https://t.me/{bot_username}?startgroup=true")],
         [
-            InlineKeyboardButton("Destek Grubu ↗️", url=SUPPORT_GROUP),
             InlineKeyboardButton("Güncellemeler ↗️", url=UPDATE_CHANNEL)
         ],
         [InlineKeyboardButton("SAHİBİ ↗️", url=OWNER_LINK)],
@@ -726,4 +725,3 @@ if __name__ == "__main__":
     init_db()  # Veritabani tablolari olusturulur ve yeni sutunlar eklenir
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_services())
-
