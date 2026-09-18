@@ -283,7 +283,7 @@ async def help_callback(client, callback_query: CallbackQuery):
     await callback_query.answer()
     await help_command(client, callback_query.message)
 
-@app.on_message(filters.command("oynat"))
+@app.on_message(filters.command(["oynat", "play", "p", "c", "vibe"]))
 async def play_command(client, message):
     if message.chat and message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
         add_group(message.chat.id, message.chat.title)
