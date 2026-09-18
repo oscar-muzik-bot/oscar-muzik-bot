@@ -19,23 +19,25 @@ current_playing = {}
 
 def get_audio_info(query, requester_name="Kullanıcı"):
     """
-    Tek aşamalı YouTube araması - iOS client ile bot tespitini aşar.
+    YouTube araması - android/web client ile ses akışını çeker.
     """
     query = query.strip()
     is_artist_search = False
 
+    cookies_file = os.path.join(current_dir, "cookies.txt")
+
     ydl_opts = {
-        'format': '140/bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best',
+        'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
         'ffmpeg_location': current_dir,
-        'extractor_args': {'youtube': {'player_client': ['ios', 'tv_embedded', 'web']}},
-        'http_headers': {
-            'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
-        }
+        'extractor_args': {'youtube': {'player_client': ['android', 'web', 'ios', 'mweb', 'tv']}},
     }
+
+    if os.path.exists(cookies_file):
+        ydl_opts['cookiefile'] = cookies_file
 
     if query.startswith("http://") or query.startswith("https://"):
         target_url = query
@@ -47,31 +49,59 @@ def get_audio_info(query, requester_name="Kullanıcı"):
         else:
             target_url = f"ytsearch1:{query}"
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info_dict = ydl.extract_info(target_url, download=False)
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(target_url, download=False)
 
-        # Arama sonucu birden fazla entry içeriyorsa
-        if 'entries' in info_dict:
-            entries = [e for e in info_dict['entries'] if e]
-            if not entries:
-                raise Exception("Hiçbir sonuç bulunamadı.")
-            if is_artist_search and len(entries) > 1:
-                info_dict = random.choice(entries)
-            else:
-                info_dict = entries[0]
+            if 'entries' in info_dict:
+                entries = [e for e in info_dict['entries'] if e]
+                if not entries:
+                    raise Exception("Hiçbir sonuç bulunamadı.")
+                if is_artist_search and len(entries) > 1:
+                    info_dict = random.choice(entries)
+                else:
+                    info_dict = entries[0]
 
-        if not info_dict or not info_dict.get('url'):
-            raise Exception("Ses akışı alınamadı.")
+            if not info_dict or not info_dict.get('url'):
+                raise Exception("Ses akışı alınamadı.")
 
-        return {
-            'url': info_dict.get('url'),
-            'title': info_dict.get('title', 'Bilinmeyen Şarkı'),
-            'duration': info_dict.get('duration_string', 'Bilinmiyor'),
-            'uploader': info_dict.get('uploader', 'Bilinmeyen Sanatçı'),
-            'webpage_url': info_dict.get('webpage_url', target_url),
-            'requester': requester_name,
-            'is_artist_search': is_artist_search
-        }
+            return {
+                'url': info_dict.get('url'),
+                'title': info_dict.get('title', 'Bilinmeyen Şarkı'),
+                'duration': info_dict.get('duration_string', 'Bilinmiyor'),
+                'uploader': info_dict.get('uploader', 'Bilinmeyen Sanatçı'),
+                'webpage_url': info_dict.get('webpage_url', target_url),
+                'requester': requester_name,
+                'is_artist_search': is_artist_search
+            }
+    except Exception as e:
+        if 'extractor_args' in ydl_opts:
+            ydl_opts_fallback = ydl_opts.copy()
+            del ydl_opts_fallback['extractor_args']
+            with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl:
+                info_dict = ydl.extract_info(target_url, download=False)
+                if 'entries' in info_dict:
+                    entries = [e for e in info_dict['entries'] if e]
+                    if not entries:
+                        raise Exception("Hiçbir sonuç bulunamadı.")
+                    if is_artist_search and len(entries) > 1:
+                        info_dict = random.choice(entries)
+                    else:
+                        info_dict = entries[0]
+
+                if not info_dict or not info_dict.get('url'):
+                    raise Exception("Ses akışı alınamadı.")
+
+                return {
+                    'url': info_dict.get('url'),
+                    'title': info_dict.get('title', 'Bilinmeyen Şarkı'),
+                    'duration': info_dict.get('duration_string', 'Bilinmiyor'),
+                    'uploader': info_dict.get('uploader', 'Bilinmeyen Sanatçı'),
+                    'webpage_url': info_dict.get('webpage_url', target_url),
+                    'requester': requester_name,
+                    'is_artist_search': is_artist_search
+                }
+        raise e
 
 
 async def play_next(call_py, chat_id, message_sender=None):
