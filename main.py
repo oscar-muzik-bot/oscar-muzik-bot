@@ -224,13 +224,18 @@ async def auto_join_assistant(chat_id, chat_username=None, chat_title="Grup"):
         try:
             member = await user_app.get_chat_member(chat_id, "me")
             if member and member.status not in [ChatMemberStatus.BANNED, ChatMemberStatus.LEFT]:
+                # Peer verisini yine de önbelleğe al
+                try:
+                    await user_app.get_chat(chat_id)
+                except Exception:
+                    pass
                 return True
         except Exception:
             pass
 
         join_target = None
         if chat_username:
-            join_target = chat_username
+            join_target = f"@{chat_username}" if not chat_username.startswith("@") else chat_username
         else:
             try:
                 invite_link = await app.export_chat_invite_link(chat_id)
@@ -241,6 +246,13 @@ async def auto_join_assistant(chat_id, chat_username=None, chat_title="Grup"):
 
         if join_target:
             await user_app.join_chat(join_target)
+            # Peer verisini önbelleğe al (PEER_ID_INVALID hatasını önler)
+            try:
+                await asyncio.sleep(1)
+                await user_app.get_chat(chat_id)
+            except Exception:
+                pass
+            print(f"Asistan '{chat_title}' grubuna başarıyla katıldı!")
             return True
     except Exception as e:
         print(f"Asistan otomatik katılma hatası ({chat_id}): {e}")
@@ -261,7 +273,7 @@ async def chat_member_update(client, chat_member_updated: ChatMemberUpdated):
             add_group(chat_id, chat_title)
             
             # Asistan hesabının otonom gruba katılması
-            await auto_join_assistant(
+            joined = await auto_join_assistant(
                 chat_id,
                 chat_username=chat_member_updated.chat.username,
                 chat_title=chat_title
@@ -269,12 +281,21 @@ async def chat_member_update(client, chat_member_updated: ChatMemberUpdated):
             
             # Gruba katılım duyurusu gönder
             try:
-                await client.send_message(
-                    chat_id,
-                    "🎵 **Oscar Müzik ve Asistan Hesabı Gruba Başarıyla Katıldı!**\n\n"
-                    "Sesli sohbeti başlatıp `/oynat şarkı_adı` yazarak müzik dinlemeye başlayabilirsiniz.",
-                    **NO_PREVIEW
-                )
+                if joined:
+                    await client.send_message(
+                        chat_id,
+                        "🎵 **Oscar Müzik ve Asistan Hesabı Gruba Başarıyla Katıldı!**\n\n"
+                        "Sesli sohbeti başlatıp `/oynat şarkı_adı` yazarak kesintisiz müzik dinlemeye başlayabilirsiniz!",
+                        **NO_PREVIEW
+                    )
+                else:
+                    await client.send_message(
+                        chat_id,
+                        "🎵 **Oscar Müzik Gruba Katıldı!**\n\n"
+                        "Sesli sohbeti başlatıp `/oynat şarkı_adı` yazarak müzik dinlemeye başlayabilirsiniz.\n\n"
+                        "⚠️ *Asistan hesabı otomatik katılamadı, lütfen @nevarlaa1 hesabını gruba davet edin.*",
+                        **NO_PREVIEW
+                    )
             except Exception:
                 pass
                 
