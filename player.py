@@ -2,6 +2,25 @@ import os
 import sys
 import random
 import traceback
+import pyrogram.raw.types
+import pyrogram.errors
+
+# Pyrogram / PyTgCalls uyumluluk yaması (ImportError önleme)
+for name in ['InputGroupCallSlug', 'InputGroupCallStream']:
+    if not hasattr(pyrogram.raw.types, name):
+        setattr(pyrogram.raw.types, name, type(name, (), {}))
+
+for err_name, fallback_name in [
+    ('GroupcallForbidden', 'BroadcastForbidden'),
+    ('GroupcallInvalid', 'GroupCallInvalid'),
+    ('GroupcallNotFound', 'GroupCallNotFound')
+]:
+    if not hasattr(pyrogram.errors, err_name):
+        try:
+            setattr(pyrogram.errors, err_name, getattr(pyrogram.errors, fallback_name, Exception))
+        except Exception:
+            setattr(pyrogram.errors, err_name, Exception)
+
 import yt_dlp
 from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream, AudioQuality, StreamEnded
