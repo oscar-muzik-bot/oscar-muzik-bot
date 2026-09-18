@@ -1,6 +1,6 @@
 pyrogram
 TgCrypto
 py-tgcalls
-yt-dlp
+git+https://github.com/yt-dlp/yt-dlp.git@master
 python-dotenv
 pycryptodome

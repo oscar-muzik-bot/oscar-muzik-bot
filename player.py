@@ -61,7 +61,8 @@ def get_audio_info(query, requester_name="Kullanıcı"):
         'no_warnings': True,
         'nocheckcertificate': True,
         'ffmpeg_location': current_dir,
-        'extractor_args': {'youtube': {'player_client': ['web', 'ios', 'tv']}},
+        'extractor_args': {'youtube': {'player_client': ['default', 'web_embedded']}},
+        'source_address': '0.0.0.0',
         'retries': 5,
         'extractor_retries': 5,
         'http_headers': {
