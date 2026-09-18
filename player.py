@@ -6,6 +6,7 @@ import yt_dlp
 from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream, AudioQuality, StreamEnded
 from pyrogram.raw.functions.phone import GetGroupCall
+from db import increment_play_count
 
 # ffmpeg ve ffprobe dizinini PATH'e ekle
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -102,6 +103,10 @@ async def play_next(call_py, chat_id, message_sender=None):
                     video_flags=MediaStream.Flags.IGNORE
                 )
             )
+            try:
+                increment_play_count(chat_id)
+            except Exception:
+                pass
         except Exception as e:
             print(f"HATA (play_next): {type(e).__name__}: {e}")
             traceback.print_exc()
