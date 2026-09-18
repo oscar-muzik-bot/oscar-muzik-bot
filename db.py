@@ -10,17 +10,29 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Gruplar Tablosu (chat_id, title, status, updated_at)
+    # Gruplar Tablosu (chat_id, title, status, play_count, added_at, updated_at)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS groups (
             chat_id INTEGER PRIMARY KEY,
             title TEXT,
             status TEXT DEFAULT 'active',
+            play_count INTEGER DEFAULT 0,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
-    # Kullanıcılar Tablosu (user_id, first_name, username, language_code, created_at)
+    # Mevcut tabloya yeni sütunları ekle (varsa hata vermez)
+    try:
+        cursor.execute("ALTER TABLE groups ADD COLUMN play_count INTEGER DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE groups ADD COLUMN added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    except Exception:
+        pass
+    
+    # Kullanıcılar Tablosu
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -38,8 +50,8 @@ def add_group(chat_id, title):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO groups (chat_id, title, status, updated_at)
-        VALUES (?, ?, 'active', CURRENT_TIMESTAMP)
+        INSERT INTO groups (chat_id, title, status, play_count, added_at, updated_at)
+        VALUES (?, ?, 'active', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT(chat_id) DO UPDATE SET
             title = excluded.title,
             status = 'active',
@@ -68,6 +80,17 @@ def mark_group_removed(chat_id, title=None):
     conn.commit()
     conn.close()
 
+def increment_play_count(chat_id):
+    """Bir grupta müzik çalındığında sayacı artırır"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE groups SET play_count = play_count + 1, updated_at = CURRENT_TIMESTAMP
+        WHERE chat_id = ?
+    """, (chat_id,))
+    conn.commit()
+    conn.close()
+
 def get_active_groups():
     conn = get_connection()
     cursor = conn.cursor()
@@ -76,10 +99,42 @@ def get_active_groups():
     conn.close()
     return rows
 
+def get_active_groups_detailed():
+    """Aktif grupları play_count ile birlikte döndürür"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT chat_id, title, play_count, added_at
+        FROM groups WHERE status = 'active'
+        ORDER BY play_count DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
 def get_removed_groups():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT chat_id, title FROM groups WHERE status = 'removed'")
+    cursor.execute("""
+        SELECT chat_id, title, updated_at
+        FROM groups WHERE status = 'removed'
+        ORDER BY updated_at DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def get_top_groups(limit=10):
+    """En çok müzik çalınan grupları döndürür"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT chat_id, title, play_count
+        FROM groups
+        WHERE status = 'active' AND play_count > 0
+        ORDER BY play_count DESC
+        LIMIT ?
+    """, (limit,))
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -109,12 +164,16 @@ def get_db_stats():
     
     cursor.execute("SELECT COUNT(*) FROM users")
     users_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COALESCE(SUM(play_count), 0) FROM groups")
+    total_plays = cursor.fetchone()[0]
     
     conn.close()
     return {
         "active_groups": active_count,
         "removed_groups": removed_count,
-        "total_users": users_count
+        "total_users": users_count,
+        "total_plays": total_plays
     }
 
 if __name__ == "__main__":
