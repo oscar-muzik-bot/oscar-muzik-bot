@@ -67,8 +67,6 @@ def get_audio_info(query, requester_name="Kullanıcı"):
     # Çerez dosyası kontrolü
     if os.path.exists(cookies_file):
         ydl_opts['cookiefile'] = cookies_file
-    elif os.environ.get("USE_OAUTH2", "").lower() == "true":
-        ydl_opts['username'] = 'oauth2'
     elif os.environ.get("COOKIES_BROWSER"):
         ydl_opts['cookiesfrombrowser'] = (os.environ.get("COOKIES_BROWSER"),)
 

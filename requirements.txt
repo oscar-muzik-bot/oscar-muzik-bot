@@ -4,4 +4,3 @@ py-tgcalls
 yt-dlp
 python-dotenv
 pycryptodome
-yt-dlp-youtube-oauth2
